@@ -60,11 +60,14 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate {
 extension ViewController {
     
     func startRecording() {
+        
+        // 检查 recognitionTask 是否在运行，若在则取消任务
         if recognitionTask != nil {
             recognitionTask?.cancel()
             recognitionTask = nil
         }
         
+        // 创建一个 AVAudioSession 对象来记录语音 设置属性时会抛出一场 因此需要放进 try-catch 语句中
         let audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession.setCategory(AVAudioSessionCategoryRecord)
@@ -74,22 +77,30 @@ extension ViewController {
             print("audioSession properties weren't set because of an error.")
         }
         
+        // 实例化 recognitionRequest 之后需要使用它把语音数据传到苹果后台
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         
+        // 检查 audioEngine 是否有录音功能的语音输入
         guard let inputNode = audioEngine.inputNode else {
             fatalError("Audio engine has no input node")
         }
         
+        // 检查 recognitionRequest 是否初始化完毕
         guard let recognitionRequest = recognitionRequest else {
             fatalError("Unable to create an SFSpeechAudioBufferRecognitionRequest object")
         }
         
+        // 当用户说话的时候，让recognitionRequest 输出部分语音识别的结果
         recognitionRequest.shouldReportPartialResults = true;
         
+        // 调用 speechRecognizer 的 recognitionTask 方式来开启语音识别
+        // 有个完成回调 每次会在识别引擎收到输入的时候，完善了当前识别的信息时候，或者被删除或者停止的时候被调用，最后会返回一个最终的文本
         recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest, resultHandler: { (result, error) in
+            
             var isFinal = false
             
             if result != nil {
+                // 如果 result 不是 nil，那么就将语音识别的最优结果输出，设置 isFinal 为 true
                 self.textView.text = result?.bestTranscription.formattedString
                 isFinal = (result?.isFinal)!
             }
@@ -97,18 +108,22 @@ extension ViewController {
                 self.audioEngine.stop()
                 inputNode.removeTap(onBus: 0)
                 
+                // 如果没有错误，或者结果时最终结果的话，停止request&task， 同时使识别按钮生效
                 self.recognitionRequest = nil
                 self.recognitionTask = nil
-                
                 self.microphoneButton.isEnabled = true
             }
         })
         
+        // 向 recognitionRequest 增加一个语音输入
+        // **在开始的 recognitionTask 之后增加语音输入是可行的**
+        // Speech Framework 会在语音输入被加入的同时就开始进行语音识别
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, when) in
             self.recognitionRequest?.append(buffer)
         }
         
+        // 准备并且开始 audioEngine
         audioEngine.prepare()
         
         do {
