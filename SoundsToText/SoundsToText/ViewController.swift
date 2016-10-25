@@ -6,6 +6,15 @@
 //  Copyright © 2016年 JustinChou. All rights reserved.
 //
 
+/*
+ 1. 苹果公司对每个设备的识别功能都有一定的限制，可咨询苹果公司
+ 2. 苹果公司对每个app也有识别功能限制
+ 3. 如果经常遇到限制，请一定联系苹果公司，他们可以提供解决方案
+ 4. 语音识别会很耗电以及会使用很多数据
+ 5. 语音识别一次只持续大概一分钟的时间
+ 
+ */
+
 import UIKit
 import Speech
 
@@ -135,9 +144,27 @@ extension ViewController {
         textView.text = "Say Something, I'm listening!"
     }
     
+    
+    func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
+        if available {
+            microphoneButton.isEnabled = true
+        } else {
+            microphoneButton.isEnabled = false
+        }
+    }
+    
+
     @IBAction func microphoneTapped(_ sender: AnyObject) {
         print("click the button")
-        startRecording()
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            recognitionRequest?.endAudio()
+            microphoneButton.isEnabled = false
+            microphoneButton.setTitle("Start Recording", for: .normal)
+        } else {
+            startRecording()
+            microphoneButton.setTitle("Stop Recording", for: .normal)
+        }
     }
 }
 
